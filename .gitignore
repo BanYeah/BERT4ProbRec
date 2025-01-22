@@ -3,6 +3,12 @@
 .idea/
 .vscode/
 
+ckpt/
+
+data/*.his
+data/*.tfrecord
+data/*.vocab
+
 
 # Initially taken from Github's Python gitignore file
 

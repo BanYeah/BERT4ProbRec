@@ -1,4 +1,4 @@
-CKPT_DIR="/path/BERT4Rec"
+CKPT_DIR="./ckpt"
 dataset_name="ml-20m"
 max_seq_length=200
 masked_lm_prob=0.2

@@ -17,6 +17,9 @@ import pickle
 import multiprocessing
 import time
 
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning) # Numpy warning ignore
+
 
 random_seed = 12345
 short_seq_prob = 0  # Probability of creating sequences which are shorter than the maximum length。
@@ -76,7 +79,7 @@ def printable_text(text):
     elif six.PY2:
         if isinstance(text, str):
             return text
-        elif isinstance(text, unicode):
+        elif isinstance(text, str):
             return text.encode("utf-8")
         else:
             raise ValueError("Unsupported string type: %s" % (type(text)))
@@ -96,7 +99,7 @@ def convert_to_unicode(text):
     elif six.PY2:
         if isinstance(text, str):
             return text.decode("utf-8", "ignore")
-        elif isinstance(text, unicode):
+        elif isinstance(text, str):
             return text
         else:
             raise ValueError("Unsupported string type: %s" % (type(text)))
@@ -251,7 +254,7 @@ def create_training_instances(all_documents_raw,
             if len(item_seq) <= max_num_tokens:
                 all_documents[user] = [item_seq]
             else:
-                beg_idx = range(len(item_seq)-max_num_tokens, 0, -sliding_step)
+                beg_idx = list(range(len(item_seq)-max_num_tokens, 0, -sliding_step))
                 beg_idx.append(0)
                 all_documents[user] = [item_seq[i:i + max_num_tokens] for i in beg_idx[::-1]]
 
@@ -509,7 +512,7 @@ def main():
     output_dir = FLAGS.data_dir
     dataset_name = FLAGS.dataset_name
     version_id = FLAGS.signature
-    print version_id
+    print(version_id)
 
     if not os.path.isdir(output_dir):
         print(output_dir + ' is not exist')
