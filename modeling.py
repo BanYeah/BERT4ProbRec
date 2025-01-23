@@ -669,31 +669,49 @@ def attention_layer(from_tensor,
     to_tensor_2d = reshape_to_matrix(to_tensor)
 
     # `query_layer` = [B*F, N*H]
-    query_layer = tf.compat.v1.layers.dense(
-        from_tensor_2d,
+    # query_layer = tf.compat.v1.layers.dense(
+    #     from_tensor_2d,
+    #     num_attention_heads * size_per_head,
+    #     activation=query_act,
+    #     name="query",
+    #     kernel_initializer=create_initializer(initializer_range),
+    # )
+    query_layer = tf.keras.layers.Dense(
         num_attention_heads * size_per_head,
         activation=query_act,
         name="query",
         kernel_initializer=create_initializer(initializer_range),
-    )
+    )(from_tensor_2d)
 
     # `key_layer` = [B*T, N*H]
-    key_layer = tf.compat.v1.layers.dense(
-        to_tensor_2d,
+    # key_layer = tf.compat.v1.layers.dense(
+    #     to_tensor_2d,
+    #     num_attention_heads * size_per_head,
+    #     activation=key_act,
+    #     name="key",
+    #     kernel_initializer=create_initializer(initializer_range),
+    # )
+    key_layer = tf.keras.layers.Dense(
         num_attention_heads * size_per_head,
         activation=key_act,
         name="key",
         kernel_initializer=create_initializer(initializer_range),
-    )
+    )(to_tensor_2d)
 
     # `value_layer` = [B*T, N*H]
-    value_layer = tf.compat.v1.layers.dense(
-        to_tensor_2d,
+    # value_layer = tf.compat.v1.layers.dense(
+    #     to_tensor_2d,
+    #     num_attention_heads * size_per_head,
+    #     activation=value_act,
+    #     name="value",
+    #     kernel_initializer=create_initializer(initializer_range),
+    # )
+    value_layer = tf.keras.layers.Dense(
         num_attention_heads * size_per_head,
         activation=value_act,
         name="value",
         kernel_initializer=create_initializer(initializer_range),
-    )
+    )(to_tensor_2d)
 
     # `query_layer` = [B, N, F, H]
     query_layer = transpose_for_scores(query_layer, batch_size,
@@ -867,11 +885,15 @@ def transformer_model(input_tensor,
                 # Run a linear projection of `hidden_size` then add a residual
                 # with `layer_input`.
                 with tf.compat.v1.variable_scope("output"):
-                    attention_output = tf.compat.v1.layers.dense(
-                        attention_output,
+                    # attention_output = tf.compat.v1.layers.dense(
+                    #     attention_output,
+                    #     hidden_size,
+                    #     kernel_initializer=create_initializer(initializer_range),
+                    # )
+                    attention_output = tf.keras.layers.Dense(
                         hidden_size,
                         kernel_initializer=create_initializer(initializer_range),
-                    )
+                    )(attention_output)
                     attention_output = dropout(attention_output,
                                                hidden_dropout_prob)
                     attention_output = layer_norm(attention_output +
@@ -879,20 +901,29 @@ def transformer_model(input_tensor,
 
             # The activation is only applied to the "intermediate" hidden layer.
             with tf.compat.v1.variable_scope("intermediate"):
-                intermediate_output = tf.compat.v1.layers.dense(
-                    attention_output,
+                # intermediate_output = tf.compat.v1.layers.dense(
+                #     attention_output,
+                #     intermediate_size,
+                #     activation=intermediate_act_fn,
+                #     kernel_initializer=create_initializer(initializer_range),
+                # )
+                intermediate_output = tf.keras.layers.Dense(
                     intermediate_size,
                     activation=intermediate_act_fn,
                     kernel_initializer=create_initializer(initializer_range),
-                )
+                )(attention_output)
 
             # Down-project back to `hidden_size` then add the residual.
             with tf.compat.v1.variable_scope("output"):
-                layer_output = tf.compat.v1.layers.dense(
-                    intermediate_output,
+                # layer_output = tf.compat.v1.layers.dense(
+                #     intermediate_output,
+                #     hidden_size,
+                #     kernel_initializer=create_initializer(initializer_range),
+                # )
+                layer_output = tf.keras.layers.Dense(
                     hidden_size,
                     kernel_initializer=create_initializer(initializer_range),
-                )
+                )(intermediate_output)
                 layer_output = dropout(layer_output, hidden_dropout_prob)
                 layer_output = layer_norm(layer_output + attention_output)
                 prev_output = layer_output
