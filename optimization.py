@@ -67,7 +67,7 @@ def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps,
         exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"])
 
     if use_tpu:
-        optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
+        optimizer = tf.compat.v1.tpu.CrossShardOptimizer(optimizer)
 
     tvars = tf.compat.v1.trainable_variables()
     grads = tf.gradients(loss, tvars)

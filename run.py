@@ -171,7 +171,7 @@ class EvalHooks(tf.compat.v1.train.SessionRunHook):
     def before_run(self, run_context):
         # tf.get_logger().info('run before run')
         # print('run before_run')
-        variables = tf.get_collection('eval_sp')
+        variables = tf.compat.v1.get_collection('eval_sp')
         return tf.compat.v1.train.SessionRunArgs(variables)
 
     def after_run(self, run_context, run_values):
@@ -327,11 +327,11 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
                                                     [-1])
                 masked_lm_ids = tf.reshape(masked_lm_ids, [-1])
                 masked_lm_weights = tf.reshape(masked_lm_weights, [-1])
-                masked_lm_accuracy = tf.metrics.accuracy(
+                masked_lm_accuracy = tf.compat.v1.metrics.accuracy(
                     labels=masked_lm_ids,
                     predictions=masked_lm_predictions,
                     weights=masked_lm_weights)
-                masked_lm_mean_loss = tf.metrics.mean(
+                masked_lm_mean_loss = tf.compat.v1.metrics.mean(
                     values=masked_lm_example_loss, weights=masked_lm_weights)
 
                 return {
@@ -339,10 +339,10 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
                     "masked_lm_loss": masked_lm_mean_loss,
                 }
 
-            tf.add_to_collection('eval_sp', masked_lm_log_probs)
-            tf.add_to_collection('eval_sp', input_ids)
-            tf.add_to_collection('eval_sp', masked_lm_ids)
-            tf.add_to_collection('eval_sp', info)
+            tf.compat.v1.add_to_collection('eval_sp', masked_lm_log_probs)
+            tf.compat.v1.add_to_collection('eval_sp', input_ids)
+            tf.compat.v1.add_to_collection('eval_sp', masked_lm_ids)
+            tf.compat.v1.add_to_collection('eval_sp', info)
 
             eval_metrics = metric_fn(masked_lm_example_loss,
                                      masked_lm_log_probs, masked_lm_ids,

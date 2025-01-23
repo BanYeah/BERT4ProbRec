@@ -348,7 +348,7 @@ def dropout(input_tensor, dropout_prob):
     if dropout_prob is None or dropout_prob == 0.0:
         return input_tensor
 
-    output = tf.nn.dropout(input_tensor, 1.0 - dropout_prob)
+    output = tf.nn.dropout(input_tensor, rate=1 - (1.0 - dropout_prob))
     return output
 
 
@@ -488,7 +488,7 @@ def embedding_postprocessor(input_tensor,
         output += token_type_embeddings
 
     if use_position_embeddings:
-        assert_op = tf.debugging.assert_less_equal(seq_length, max_position_embeddings)
+        assert_op = tf.compat.v1.debugging.assert_less_equal(seq_length, max_position_embeddings)
         with tf.control_dependencies([assert_op]):
             full_position_embeddings = tf.Variable(
                 initial_value=create_initializer(initializer_range)(
@@ -989,7 +989,7 @@ def assert_rank(tensor, expected_rank, name=None):
 
     actual_rank = tensor.shape.ndims
     if actual_rank not in expected_rank_dict:
-        scope_name = tf.get_variable_scope().name
+        scope_name = tf.compat.v1.get_variable_scope().name
         raise ValueError(
             "For the tensor `%s` in scope `%s`, the actual rank "
             "`%d` (shape = %s) is not equal to the expected rank `%s`" %
