@@ -25,18 +25,19 @@ import tensorflow as tf
 def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps,
                      use_tpu):
     """Creates an optimizer training op."""
-    global_step = tf.train.get_or_create_global_step()
+    global_step = tf.compat.v1.train.get_or_create_global_step()
 
     learning_rate = tf.constant(value=init_lr, shape=[], dtype=tf.float32)
 
     # Implements linear decay of the learning rate.
-    learning_rate = tf.train.polynomial_decay(
+    learning_rate = tf.compat.v1.train.polynomial_decay(
         learning_rate,
         global_step,
         num_train_steps,
         end_learning_rate=0.0,
         power=1.0,
-        cycle=False)
+        cycle=False,
+    )
 
     # Implements linear warmup. I.e., if global_step < num_warmup_steps, the
     # learning rate will be `global_step/num_warmup_steps * init_lr`.
@@ -68,7 +69,7 @@ def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps,
     if use_tpu:
         optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
 
-    tvars = tf.trainable_variables()
+    tvars = tf.compat.v1.trainable_variables()
     grads = tf.gradients(loss, tvars)
 
     # This is how the model was pre-trained.
@@ -82,7 +83,7 @@ def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps,
     return train_op
 
 
-class AdamWeightDecayOptimizer(tf.train.Optimizer):
+class AdamWeightDecayOptimizer(tf.compat.v1.train.Optimizer):
     """A basic Adam optimizer that includes "correct" L2 weight decay."""
 
     def __init__(self,
@@ -112,18 +113,16 @@ class AdamWeightDecayOptimizer(tf.train.Optimizer):
 
             param_name = self._get_variable_name(param.name)
 
-            m = tf.get_variable(
+            m = tf.Variable(
+                initial_value=tf.zeros(param.shape.as_list(), dtype=tf.float32),
+                trainable=False,
                 name=param_name + "/adam_m",
-                shape=param.shape.as_list(),
-                dtype=tf.float32,
+            )
+            v = tf.Variable(
+                initial_value=tf.zeros(param.shape.as_list(), dtype=tf.float32),
                 trainable=False,
-                initializer=tf.zeros_initializer())
-            v = tf.get_variable(
                 name=param_name + "/adam_v",
-                shape=param.shape.as_list(),
-                dtype=tf.float32,
-                trainable=False,
-                initializer=tf.zeros_initializer())
+            )
 
             # Standard Adam update.
             next_m = (tf.multiply(self.beta_1, m) +
