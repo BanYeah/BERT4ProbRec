@@ -2,6 +2,7 @@
 import os
 import sys
 import codecs
+import warnings
 
 import collections
 import random
@@ -14,6 +15,9 @@ from vocab import *
 import pickle
 import multiprocessing
 import time
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 tf.compat.v1.disable_eager_execution()
 tf.compat.v1.disable_v2_behavior()

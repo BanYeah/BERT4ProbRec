@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import os
 import sys
+import warnings
 
 import tensorflow as tf
 import numpy as np
@@ -27,6 +28,9 @@ import numpy as np
 import modeling
 import optimization
 import pickle
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 tf.compat.v1.disable_eager_execution()
 tf.compat.v1.disable_v2_behavior()
@@ -380,14 +384,6 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
         # We apply one more non-linear transformation before the output layer.
         # This matrix is not used after pre-training.
         with tf.compat.v1.variable_scope("transform"):
-            # input_tensor = tf.compat.v1.layers.dense(
-            #     input_tensor,
-            #     units=bert_config.hidden_size,
-            #     activation=modeling.get_activation(bert_config.hidden_act),
-            #     kernel_initializer=modeling.create_initializer(
-            #         bert_config.initializer_range
-            #     ),
-            # )
             input_tensor = tf.keras.layers.Dense(
                 units=bert_config.hidden_size,
                 activation=modeling.get_activation(bert_config.hidden_act),

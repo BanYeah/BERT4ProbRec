@@ -6,6 +6,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import warnings
+
 import collections
 import copy
 import json
@@ -14,6 +16,9 @@ import re
 
 import tensorflow as tf
 import six
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 tf.compat.v1.disable_eager_execution()
 tf.compat.v1.disable_v2_behavior()
@@ -669,13 +674,6 @@ def attention_layer(from_tensor,
     to_tensor_2d = reshape_to_matrix(to_tensor)
 
     # `query_layer` = [B*F, N*H]
-    # query_layer = tf.compat.v1.layers.dense(
-    #     from_tensor_2d,
-    #     num_attention_heads * size_per_head,
-    #     activation=query_act,
-    #     name="query",
-    #     kernel_initializer=create_initializer(initializer_range),
-    # )
     query_layer = tf.keras.layers.Dense(
         num_attention_heads * size_per_head,
         activation=query_act,
@@ -684,13 +682,6 @@ def attention_layer(from_tensor,
     )(from_tensor_2d)
 
     # `key_layer` = [B*T, N*H]
-    # key_layer = tf.compat.v1.layers.dense(
-    #     to_tensor_2d,
-    #     num_attention_heads * size_per_head,
-    #     activation=key_act,
-    #     name="key",
-    #     kernel_initializer=create_initializer(initializer_range),
-    # )
     key_layer = tf.keras.layers.Dense(
         num_attention_heads * size_per_head,
         activation=key_act,
@@ -699,13 +690,6 @@ def attention_layer(from_tensor,
     )(to_tensor_2d)
 
     # `value_layer` = [B*T, N*H]
-    # value_layer = tf.compat.v1.layers.dense(
-    #     to_tensor_2d,
-    #     num_attention_heads * size_per_head,
-    #     activation=value_act,
-    #     name="value",
-    #     kernel_initializer=create_initializer(initializer_range),
-    # )
     value_layer = tf.keras.layers.Dense(
         num_attention_heads * size_per_head,
         activation=value_act,
@@ -901,12 +885,6 @@ def transformer_model(input_tensor,
 
             # The activation is only applied to the "intermediate" hidden layer.
             with tf.compat.v1.variable_scope("intermediate"):
-                # intermediate_output = tf.compat.v1.layers.dense(
-                #     attention_output,
-                #     intermediate_size,
-                #     activation=intermediate_act_fn,
-                #     kernel_initializer=create_initializer(initializer_range),
-                # )
                 intermediate_output = tf.keras.layers.Dense(
                     intermediate_size,
                     activation=intermediate_act_fn,
@@ -915,11 +893,6 @@ def transformer_model(input_tensor,
 
             # Down-project back to `hidden_size` then add the residual.
             with tf.compat.v1.variable_scope("output"):
-                # layer_output = tf.compat.v1.layers.dense(
-                #     intermediate_output,
-                #     hidden_size,
-                #     kernel_initializer=create_initializer(initializer_range),
-                # )
                 layer_output = tf.keras.layers.Dense(
                     hidden_size,
                     kernel_initializer=create_initializer(initializer_range),
