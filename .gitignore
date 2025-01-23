@@ -5,6 +5,7 @@
 
 ckpt/
 
+data/woong.csv
 data/*.his
 data/*.tfrecord
 data/*.vocab
