@@ -527,6 +527,8 @@ def main(argv):
 
 
 if __name__ == "__main__":
+    tf.compat.v1.disable_eager_execution()
+    
     flags.mark_flag_as_required("bert_config_file")
     flags.mark_flag_as_required("checkpointDir")
     flags.mark_flag_as_required("user_history_filename")
