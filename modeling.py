@@ -11,8 +11,12 @@ import copy
 import json
 import math
 import re
-import six
+
 import tensorflow as tf
+import six
+
+tf.compat.v1.disable_eager_execution()
+tf.compat.v1.disable_v2_behavior()
 
 
 class BertConfig(object):
@@ -77,7 +81,7 @@ class BertConfig(object):
     @classmethod
     def from_json_file(cls, json_file):
         """Constructs a `BertConfig` from a json file of parameters."""
-        with tf.gfile.GFile(json_file, "r") as reader:
+        with tf.compat.v1.gfile.GFile(json_file, "r") as reader:
             text = reader.read()
         return cls.from_dict(json.loads(text))
 
@@ -157,8 +161,8 @@ class BertModel(object):
             token_type_ids = tf.zeros(
                 shape=[batch_size, seq_length], dtype=tf.int32)
 
-        with tf.variable_scope(scope, default_name="bert"):
-            with tf.variable_scope("embeddings"):
+        with tf.compat.v1.variable_scope(scope, default_name="bert"):
+            with tf.compat.v1.variable_scope("embeddings"):
                 # Perform embedding lookup on the word ids.
                 (self.embedding_output,
                  self.embedding_table) = embedding_lookup(
@@ -183,7 +187,7 @@ class BertModel(object):
                     max_position_embeddings=config.max_position_embeddings,
                     dropout_prob=config.hidden_dropout_prob)
 
-            with tf.variable_scope("encoder"):
+            with tf.compat.v1.variable_scope("encoder"):
                 # This converts a 2D mask of shape [batch_size, seq_length] to a 3D
                 # mask of shape [batch_size, seq_length, seq_length] which is used
                 # for the attention scores.
@@ -266,7 +270,7 @@ def gelu(input_tensor):
     Returns:
         `input_tensor` with the GELU activation applied.
     """
-    cdf = 0.5 * (1.0 + tf.erf(input_tensor / tf.sqrt(2.0)))
+    cdf = 0.5 * (1.0 + tf.compat.v1.erf(input_tensor / tf.sqrt(2.0)))
     return input_tensor * cdf
 
 
@@ -320,7 +324,7 @@ def get_assignment_map_from_checkpoint(tvars, init_checkpoint):
             name = m.group(1)
         name_to_variable[name] = var
 
-    init_vars = tf.train.list_variables(init_checkpoint)
+    init_vars = tf.compat.v1.train.list_variables(init_checkpoint)
 
     assignment_map = collections.OrderedDict()
     for x in init_vars:
@@ -354,11 +358,11 @@ def dropout(input_tensor, dropout_prob):
 
 def layer_norm(input_tensor, name=None):
     """Run layer normalization on the last dimension of the tensor."""
-    return tf.contrib.layers.layer_norm(
-        inputs=input_tensor,
-        begin_norm_axis=-1,
-        begin_params_axis=-1,
-        scope=name)
+    # return tf.contrib.layers.layer_norm(
+    #     inputs=input_tensor, begin_norm_axis=-1, begin_params_axis=-1, scope=name
+    # )
+    layer_norm = tf.keras.layers.LayerNormalization(axis=-1, name=name)
+    return layer_norm(input_tensor)
 
 
 def layer_norm_and_dropout(input_tensor, dropout_prob, name=None):
@@ -370,7 +374,7 @@ def layer_norm_and_dropout(input_tensor, dropout_prob, name=None):
 
 def create_initializer(initializer_range=0.02):
     """Creates a `truncated_normal_initializer` with the given range."""
-    return tf.truncated_normal_initializer(stddev=initializer_range)
+    return tf.compat.v1.truncated_normal_initializer(stddev=initializer_range)
 
 
 def embedding_lookup(input_ids,
@@ -403,10 +407,11 @@ def embedding_lookup(input_ids,
     if input_ids.shape.ndims == 2:
         input_ids = tf.expand_dims(input_ids, axis=[-1])
 
-    embedding_table = tf.get_variable(
+    embedding_table = tf.compat.v1.get_variable(
         name=word_embedding_name,
         shape=[vocab_size, embedding_size],
-        initializer=create_initializer(initializer_range))
+        initializer=create_initializer(initializer_range),
+    )
 
     if use_one_hot_embeddings:
         flat_input_ids = tf.reshape(input_ids, [-1])
@@ -470,10 +475,11 @@ def embedding_postprocessor(input_tensor,
         if token_type_ids is None:
             raise ValueError("`token_type_ids` must be specified if"
                              "`use_token_type` is True.")
-        token_type_table = tf.get_variable(
+        token_type_table = tf.compat.v1.get_variable(
             name=token_type_embedding_name,
             shape=[token_type_vocab_size, width],
-            initializer=create_initializer(initializer_range))
+            initializer=create_initializer(initializer_range),
+        )
         # This vocab will be small so we always do one-hot here, since it is always
         # faster for a small vocabulary.
         flat_token_type_ids = tf.reshape(token_type_ids, [-1])
@@ -485,12 +491,13 @@ def embedding_postprocessor(input_tensor,
         output += token_type_embeddings
 
     if use_position_embeddings:
-        assert_op = tf.assert_less_equal(seq_length, max_position_embeddings)
+        assert_op = tf.compat.v1.assert_less_equal(seq_length, max_position_embeddings)
         with tf.control_dependencies([assert_op]):
-            full_position_embeddings = tf.get_variable(
+            full_position_embeddings = tf.compat.v1.get_variable(
                 name=position_embedding_name,
                 shape=[max_position_embeddings, width],
-                initializer=create_initializer(initializer_range))
+                initializer=create_initializer(initializer_range),
+            )
             # Since the position embedding table is a learned variable, we create it
             # using a (long) sequence length `max_position_embeddings`. The actual
             # sequence length might be shorter than this, for faster training of
@@ -662,28 +669,31 @@ def attention_layer(from_tensor,
     to_tensor_2d = reshape_to_matrix(to_tensor)
 
     # `query_layer` = [B*F, N*H]
-    query_layer = tf.layers.dense(
+    query_layer = tf.compat.v1.layers.dense(
         from_tensor_2d,
         num_attention_heads * size_per_head,
         activation=query_act,
         name="query",
-        kernel_initializer=create_initializer(initializer_range))
+        kernel_initializer=create_initializer(initializer_range),
+    )
 
     # `key_layer` = [B*T, N*H]
-    key_layer = tf.layers.dense(
+    key_layer = tf.compat.v1.layers.dense(
         to_tensor_2d,
         num_attention_heads * size_per_head,
         activation=key_act,
         name="key",
-        kernel_initializer=create_initializer(initializer_range))
+        kernel_initializer=create_initializer(initializer_range),
+    )
 
     # `value_layer` = [B*T, N*H]
-    value_layer = tf.layers.dense(
+    value_layer = tf.compat.v1.layers.dense(
         to_tensor_2d,
         num_attention_heads * size_per_head,
         activation=value_act,
         name="value",
-        kernel_initializer=create_initializer(initializer_range))
+        kernel_initializer=create_initializer(initializer_range),
+    )
 
     # `query_layer` = [B, N, F, H]
     query_layer = transpose_for_scores(query_layer, batch_size,
@@ -825,12 +835,12 @@ def transformer_model(input_tensor,
 
     all_layer_outputs = []
     for layer_idx in range(num_hidden_layers):
-        with tf.variable_scope("layer_%d" % layer_idx):
+        with tf.compat.v1.variable_scope("layer_%d" % layer_idx):
             layer_input = prev_output
 
-            with tf.variable_scope("attention"):
+            with tf.compat.v1.variable_scope("attention"):
                 attention_heads = []
-                with tf.variable_scope("self"):
+                with tf.compat.v1.variable_scope("self"):
                     attention_head = attention_layer(
                         from_tensor=layer_input,
                         to_tensor=layer_input,
@@ -856,31 +866,33 @@ def transformer_model(input_tensor,
 
                 # Run a linear projection of `hidden_size` then add a residual
                 # with `layer_input`.
-                with tf.variable_scope("output"):
-                    attention_output = tf.layers.dense(
+                with tf.compat.v1.variable_scope("output"):
+                    attention_output = tf.compat.v1.layers.dense(
                         attention_output,
                         hidden_size,
-                        kernel_initializer=create_initializer(
-                            initializer_range))
+                        kernel_initializer=create_initializer(initializer_range),
+                    )
                     attention_output = dropout(attention_output,
                                                hidden_dropout_prob)
                     attention_output = layer_norm(attention_output +
                                                   layer_input)
 
             # The activation is only applied to the "intermediate" hidden layer.
-            with tf.variable_scope("intermediate"):
-                intermediate_output = tf.layers.dense(
+            with tf.compat.v1.variable_scope("intermediate"):
+                intermediate_output = tf.compat.v1.layers.dense(
                     attention_output,
                     intermediate_size,
                     activation=intermediate_act_fn,
-                    kernel_initializer=create_initializer(initializer_range))
+                    kernel_initializer=create_initializer(initializer_range),
+                )
 
             # Down-project back to `hidden_size` then add the residual.
-            with tf.variable_scope("output"):
-                layer_output = tf.layers.dense(
+            with tf.compat.v1.variable_scope("output"):
+                layer_output = tf.compat.v1.layers.dense(
                     intermediate_output,
                     hidden_size,
-                    kernel_initializer=create_initializer(initializer_range))
+                    kernel_initializer=create_initializer(initializer_range),
+                )
                 layer_output = dropout(layer_output, hidden_dropout_prob)
                 layer_output = layer_norm(layer_output + attention_output)
                 prev_output = layer_output

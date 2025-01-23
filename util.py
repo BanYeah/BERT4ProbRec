@@ -1,9 +1,12 @@
 from __future__ import print_function
+
 import sys
+
+from collections import defaultdict
 import copy
 import random
+
 import numpy as np
-from collections import defaultdict
 
 
 def data_partition(fname):
@@ -36,4 +39,3 @@ def data_partition(fname):
             user_test[user] = []
             user_test[user].append(User[user][-1])
     return [user_train, user_valid, user_test, usernum, itemnum]
-

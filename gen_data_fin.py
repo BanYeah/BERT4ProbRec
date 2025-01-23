@@ -1,14 +1,12 @@
 # -*- coding: UTF-8 -*-
 import os
+import sys
 import codecs
 
 import collections
 import random
 
-import sys
-
 import tensorflow as tf
-
 import six
 
 from util import *
@@ -17,14 +15,14 @@ import pickle
 import multiprocessing
 import time
 
-import warnings
-warnings.filterwarnings("ignore", category=FutureWarning) # Numpy warning ignore
+tf.compat.v1.disable_eager_execution()
+tf.compat.v1.disable_v2_behavior()
 
 
 random_seed = 12345
 short_seq_prob = 0  # Probability of creating sequences which are shorter than the maximum length。
 
-flags = tf.flags
+flags = tf.compat.v1.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string("signature", 'default', "signature_name")
@@ -54,7 +52,7 @@ flags.DEFINE_integer(
     "Number of times to duplicate the input data (with different masks).")
 
 flags.DEFINE_float("prop_sliding_window", 0.1, "sliding window step size.")
-    
+
 flags.DEFINE_string(
     "data_dir", './data/',
     "data dir.")
@@ -138,7 +136,7 @@ def write_instance_to_example_files(instances, max_seq_length,
     """Create TF example files from `TrainingInstance`s."""
     writers = []
     for output_file in output_files:
-        writers.append(tf.python_io.TFRecordWriter(output_file))
+        writers.append(tf.compat.v1.python_io.TFRecordWriter(output_file))
 
     writer_index = 0
 
@@ -175,8 +173,8 @@ def write_instance_to_example_files(instances, max_seq_length,
         features["masked_lm_ids"] = create_int_feature(masked_lm_ids)
         features["masked_lm_weights"] = create_float_feature(masked_lm_weights)
 
-        tf_example = tf.train.Example(
-            features=tf.train.Features(feature=features))
+        tf_example = tf.compat.v1.train.Example(
+            features=tf.compat.v1.train.Features(feature=features))
 
         writers[writer_index].write(tf_example.SerializeToString())
         writer_index = (writer_index + 1) % len(writers)
@@ -184,9 +182,10 @@ def write_instance_to_example_files(instances, max_seq_length,
         total_written += 1
 
         if inst_index < 20:
-            tf.logging.info("*** Example ***")
-            tf.logging.info("tokens: %s" % " ".join(
-                [printable_text(x) for x in instance.tokens]))
+            tf.compat.v1.logging.info("*** Example ***")
+            tf.compat.v1.logging.info(
+                "tokens: %s" % " ".join([printable_text(x) for x in instance.tokens])
+            )
 
             for feature_name in features.keys():
                 feature = features[feature_name]
@@ -195,25 +194,25 @@ def write_instance_to_example_files(instances, max_seq_length,
                     values = feature.int64_list.value
                 elif feature.float_list.value:
                     values = feature.float_list.value
-                tf.logging.info("%s: %s" % (feature_name,
-                                            " ".join([str(x)
-                                                      for x in values])))
+                tf.compat.v1.logging.info(
+                    "%s: %s" % (feature_name, " ".join([str(x) for x in values]))
+                )
 
     for writer in writers:
         writer.close()
 
-    tf.logging.info("Wrote %d total instances", total_written)
+    tf.compat.v1.logging.info("Wrote %d total instances", total_written)
 
 
 def create_int_feature(values):
-    feature = tf.train.Feature(
-        int64_list=tf.train.Int64List(value=list(values)))
+    feature = tf.compat.v1.train.Feature(
+        int64_list=tf.compat.v1.train.Int64List(value=list(values)))
     return feature
 
 
 def create_float_feature(values):
-    feature = tf.train.Feature(
-        float_list=tf.train.FloatList(value=list(values)))
+    feature = tf.compat.v1.train.Feature(
+        float_list=tf.compat.v1.train.FloatList(value=list(values)))
     return feature
 
 
@@ -250,7 +249,7 @@ def create_training_instances(all_documents_raw,
                 print("got empty seq:" + user)
                 continue
 
-            #todo: add slide
+            # todo: add slide
             if len(item_seq) <= max_num_tokens:
                 all_documents[user] = [item_seq]
             else:
@@ -266,7 +265,7 @@ def create_training_instances(all_documents_raw,
                     all_documents, user, max_seq_length))
         print("num of instance:{}".format(len(instances)))
     else:
-        start_time = time.clock()
+        start_time = time.perf_counter()
         pool = multiprocessing.Pool(processes=pool_size)
         instances = []
         print("document num: {}".format(len(all_documents)))
@@ -283,14 +282,18 @@ def create_training_instances(all_documents_raw,
                     mask_prob, step), callback=log_result)
         pool.close()
         pool.join()
-        
+
         for user in all_documents:
             instances.extend(
                 mask_last(
                     all_documents, user, max_seq_length, short_seq_prob,
                     masked_lm_prob, max_predictions_per_seq, vocab, rng))
 
-        print("num of instance:{}; time:{}".format(len(instances), time.clock() - start_time))
+        print(
+            "num of instance:{}; time:{}".format(
+                len(instances), time.perf_counter() - start_time
+            )
+        )
     rng.shuffle(instances)
     return instances
 
@@ -298,11 +301,11 @@ def create_training_instances(all_documents_raw,
 def create_instances_threading(all_documents, user, max_seq_length, short_seq_prob,
                                masked_lm_prob, max_predictions_per_seq, vocab, rng,
                                mask_prob, step):
-    cnt = 0;
+    cnt = 0
     start_time = time.clock()
     instances = []
     for user in all_documents:
-        cnt += 1;
+        cnt += 1
         if cnt % 1000 == 0:
             print("step: {}, name: {}, step: {}, time: {}".format(step, multiprocessing.current_process().name, cnt, time.clock()-start_time))
             start_time = time.clock()
@@ -490,8 +493,8 @@ def gen_samples(data,
         max_predictions_per_seq, rng, vocab, mask_prob, prop_sliding_window,
         pool_size, force_last)
 
-    tf.logging.info("*** Writing to output files ***")
-    tf.logging.info("  %s", output_filename)
+    tf.compat.v1.logging.info("*** Writing to output files ***")
+    tf.compat.v1.logging.info("  %s", output_filename)
 
     write_instance_to_example_files(instances, max_seq_length,
                                     max_predictions_per_seq, vocab,
@@ -499,8 +502,8 @@ def gen_samples(data,
 
 
 def main():
-    tf.logging.set_verbosity(tf.logging.DEBUG)
-    
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
+
     max_seq_length = FLAGS.max_seq_length
     max_predictions_per_seq = FLAGS.max_predictions_per_seq
     masked_lm_prob = FLAGS.masked_lm_prob

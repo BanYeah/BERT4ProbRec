@@ -19,13 +19,19 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import modeling
-import optimization
+import sys
+
 import tensorflow as tf
 import numpy as np
-import sys
+
+import modeling
+import optimization
 import pickle
-flags = tf.flags
+
+tf.compat.v1.disable_eager_execution()
+tf.compat.v1.disable_v2_behavior()
+
+flags = tf.compat.v1.flags
 
 FLAGS = flags.FLAGS
 
@@ -68,10 +74,10 @@ flags.DEFINE_bool("do_train", False, "Whether to run training.")
 
 flags.DEFINE_bool("do_eval", False, "Whether to run eval on the dev set.")
 
-#flags.DEFINE_integer("train_batch_size", 32, "Total batch size for training.")
+# flags.DEFINE_integer("train_batch_size", 32, "Total batch size for training.")
 flags.DEFINE_integer("batch_size", 32, "Total batch size for training.")
 
-#flags.DEFINE_integer("eval_batch_size", 1, "Total batch size for eval.")
+# flags.DEFINE_integer("eval_batch_size", 1, "Total batch size for eval.")
 
 flags.DEFINE_float("learning_rate", 5e-5,
                    "The initial learning rate for Adam.")
@@ -90,25 +96,31 @@ flags.DEFINE_integer("max_eval_steps", 1000, "Maximum number of eval steps.")
 
 flags.DEFINE_bool("use_tpu", False, "Whether to use TPU or GPU/CPU.")
 
-tf.flags.DEFINE_string(
-    "tpu_name", None,
+tf.compat.v1.flags.DEFINE_string(
+    "tpu_name",
+    None,
     "The Cloud TPU to use for training. This should be either the name "
     "used when creating the Cloud TPU, or a grpc://ip.address.of.tpu:8470 "
-    "url.")
+    "url.",
+)
 
-tf.flags.DEFINE_string(
-    "tpu_zone", None,
+tf.compat.v1.flags.DEFINE_string(
+    "tpu_zone",
+    None,
     "[Optional] GCE zone where the Cloud TPU is located in. If not "
     "specified, we will attempt to automatically detect the GCE project from "
-    "metadata.")
+    "metadata.",
+)
 
-tf.flags.DEFINE_string(
-    "gcp_project", None,
+tf.compat.v1.flags.DEFINE_string(
+    "gcp_project",
+    None,
     "[Optional] Project name for the Cloud TPU-enabled project. If not "
     "specified, we will attempt to automatically detect the GCE project from "
-    "metadata.")
+    "metadata.",
+)
 
-tf.flags.DEFINE_string("master", None, "[Optional] TensorFlow master URL.")
+tf.compat.v1.flags.DEFINE_string("master", None, "[Optional] TensorFlow master URL.")
 
 flags.DEFINE_integer(
     "num_tpu_cores", 8,
@@ -119,10 +131,9 @@ flags.DEFINE_string("vocab_filename", None, "vocab filename")
 flags.DEFINE_string("user_history_filename", None, "user history filename")
 
 
-
-class EvalHooks(tf.train.SessionRunHook):
+class EvalHooks(tf.compat.v1.train.SessionRunHook):
     def __init__(self):
-        tf.logging.info('run init')
+        tf.compat.v1.logging.info("run init")
 
     def begin(self):
         self.valid_user = 0.0
@@ -168,19 +179,19 @@ class EvalHooks(tf.train.SessionRunHook):
                    self.valid_user))
 
     def before_run(self, run_context):
-        #tf.logging.info('run before run')
-        #print('run before_run')
+        # tf.logging.info('run before run')
+        # print('run before_run')
         variables = tf.get_collection('eval_sp')
-        return tf.train.SessionRunArgs(variables)
+        return tf.compat.v1.train.SessionRunArgs(variables)
 
     def after_run(self, run_context, run_values):
-        #tf.logging.info('run after run')
-        #print('run after run')
+        # tf.logging.info('run after run')
+        # print('run after run')
         masked_lm_log_probs, input_ids, masked_lm_ids, info = run_values.results
         masked_lm_log_probs = masked_lm_log_probs.reshape(
             (-1, FLAGS.max_predictions_per_seq, masked_lm_log_probs.shape[1]))
-#         print("loss value:", masked_lm_log_probs.shape, input_ids.shape,
-#               masked_lm_ids.shape, info.shape)
+        #         print("loss value:", masked_lm_log_probs.shape, input_ids.shape,
+        #               masked_lm_ids.shape, info.shape)
 
         for idx in range(len(input_ids)):
             rated = set(input_ids[idx])
@@ -237,10 +248,11 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     def model_fn(features, labels, mode, params):  # pylint: disable=unused-argument
         """The `model_fn` for TPUEstimator."""
 
-        tf.logging.info("*** Features ***")
+        tf.compat.v1.logging.info("*** Features ***")
         for name in sorted(features.keys()):
-            tf.logging.info("  name = %s, shape = %s" % (name,
-                                                         features[name].shape))
+            tf.compat.v1.logging.info(
+                "  name = %s, shape = %s" % (name, features[name].shape)
+            )
 
         info = features["info"]
         input_ids = features["input_ids"]
@@ -249,7 +261,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         masked_lm_ids = features["masked_lm_ids"]
         masked_lm_weights = features["masked_lm_weights"]
 
-        is_training = (mode == tf.estimator.ModeKeys.TRAIN)
+        is_training = (mode == tf.compat.v1.estimator.ModeKeys.TRAIN)
 
         model = modeling.BertModel(
             config=bert_config,
@@ -258,10 +270,10 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
             input_mask=input_mask,
             token_type_ids=None,
             use_one_hot_embeddings=use_one_hot_embeddings)
-        
-#         all_user_and_item = model.get_embedding_table()
-#         item_ids = [i for i in range(0, item_size + 1)]
-#         softmax_output_embedding = tf.nn.embedding_lookup(all_user_and_item, item_ids)
+
+        #         all_user_and_item = model.get_embedding_table()
+        #         item_ids = [i for i in range(0, item_size + 1)]
+        #         softmax_output_embedding = tf.nn.embedding_lookup(all_user_and_item, item_ids)
 
         (masked_lm_loss,
          masked_lm_example_loss, masked_lm_log_probs) = get_masked_lm_output(
@@ -272,7 +284,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 
         total_loss = masked_lm_loss
 
-        tvars = tf.trainable_variables()
+        tvars = tf.compat.v1.trainable_variables()
 
         initialized_variable_names = {}
         scaffold_fn = None
@@ -283,34 +295,35 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
             if use_tpu:
 
                 def tpu_scaffold():
-                    tf.train.init_from_checkpoint(init_checkpoint,
+                    tf.compat.v1.train.init_from_checkpoint(init_checkpoint,
                                                   assignment_map)
-                    return tf.train.Scaffold()
+                    return tf.compat.v1.train.Scaffold()
 
                 scaffold_fn = tpu_scaffold
             else:
-                tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
+                tf.compat.v1.train.init_from_checkpoint(init_checkpoint, assignment_map)
 
-        tf.logging.info("**** Trainable Variables ****")
+        tf.compat.v1.logging.info("**** Trainable Variables ****")
         for var in tvars:
             init_string = ""
             if var.name in initialized_variable_names:
                 init_string = ", *INIT_FROM_CKPT*"
-            tf.logging.info("  name = %s, shape = %s%s", var.name, var.shape,
-                            init_string)
+            tf.compat.v1.logging.info(
+                "  name = %s, shape = %s%s", var.name, var.shape, init_string
+            )
 
         output_spec = None
-        if mode == tf.estimator.ModeKeys.TRAIN:
+        if mode == tf.compat.v1.estimator.ModeKeys.TRAIN:
             train_op = optimization.create_optimizer(total_loss, learning_rate,
                                                      num_train_steps,
                                                      num_warmup_steps, use_tpu)
 
-            output_spec = tf.estimator.EstimatorSpec(
+            output_spec = tf.compat.v1.estimator.EstimatorSpec(
                 mode=mode,
                 loss=total_loss,
                 train_op=train_op,
                 scaffold=scaffold_fn)
-        elif mode == tf.estimator.ModeKeys.EVAL:
+        elif mode == tf.compat.v1.estimator.ModeKeys.EVAL:
 
             def metric_fn(masked_lm_example_loss, masked_lm_log_probs,
                           masked_lm_ids, masked_lm_weights):
@@ -343,7 +356,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
             eval_metrics = metric_fn(masked_lm_example_loss,
                                      masked_lm_log_probs, masked_lm_ids,
                                      masked_lm_weights)
-            output_spec = tf.estimator.EstimatorSpec(
+            output_spec = tf.compat.v1.estimator.EstimatorSpec(
                 mode=mode,
                 loss=total_loss,
                 eval_metric_ops=eval_metrics,
@@ -363,24 +376,27 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
     # [batch_size*label_size, dim]
     input_tensor = gather_indexes(input_tensor, positions)
 
-    with tf.variable_scope("cls/predictions"):
+    with tf.compat.v1.variable_scope("cls/predictions"):
         # We apply one more non-linear transformation before the output layer.
         # This matrix is not used after pre-training.
-        with tf.variable_scope("transform"):
-            input_tensor = tf.layers.dense(
+        with tf.compat.v1.variable_scope("transform"):
+            input_tensor = tf.compat.v1.layers.dense(
                 input_tensor,
                 units=bert_config.hidden_size,
                 activation=modeling.get_activation(bert_config.hidden_act),
                 kernel_initializer=modeling.create_initializer(
-                    bert_config.initializer_range))
+                    bert_config.initializer_range
+                ),
+            )
             input_tensor = modeling.layer_norm(input_tensor)
 
         # The output weights are the same as the input embeddings, but there is
         # an output-only bias for each token.
-        output_bias = tf.get_variable(
+        output_bias = tf.compat.v1.get_variable(
             "output_bias",
             shape=[output_weights.shape[0]],
-            initializer=tf.zeros_initializer())
+            initializer=tf.zeros_initializer(),
+        )
         logits = tf.matmul(input_tensor, output_weights, transpose_b=True)
         logits = tf.nn.bias_add(logits, output_bias)
         # logits, (bs*label_size, vocab_size)
@@ -433,18 +449,18 @@ def input_fn_builder(input_files,
         batch_size = params["batch_size"]
 
         name_to_features = {
-            "info":
-            tf.FixedLenFeature([1], tf.int64),  #[user]
-            "input_ids":
-            tf.FixedLenFeature([max_seq_length], tf.int64),
-            "input_mask":
-            tf.FixedLenFeature([max_seq_length], tf.int64),
-            "masked_lm_positions":
-            tf.FixedLenFeature([max_predictions_per_seq], tf.int64),
-            "masked_lm_ids":
-            tf.FixedLenFeature([max_predictions_per_seq], tf.int64),
-            "masked_lm_weights":
-            tf.FixedLenFeature([max_predictions_per_seq], tf.float32)
+            "info": tf.compat.v1.FixedLenFeature([1], tf.int64),  # [user]
+            "input_ids": tf.compat.v1.FixedLenFeature([max_seq_length], tf.int64),
+            "input_mask": tf.compat.v1.FixedLenFeature([max_seq_length], tf.int64),
+            "masked_lm_positions": tf.compat.v1.FixedLenFeature(
+                [max_predictions_per_seq], tf.int64
+            ),
+            "masked_lm_ids": tf.compat.v1.FixedLenFeature(
+                [max_predictions_per_seq], tf.int64
+            ),
+            "masked_lm_weights": tf.compat.v1.FixedLenFeature(
+                [max_predictions_per_seq], tf.float32
+            ),
         }
 
         # For training, we want a lot of parallel reading and shuffling.
@@ -455,19 +471,18 @@ def input_fn_builder(input_files,
             d = d.shuffle(buffer_size=100)
 
             # `cycle_length` is the number of parallel files that get read.
-            #cycle_length = min(num_cpu_threads, len(input_files))
+            # cycle_length = min(num_cpu_threads, len(input_files))
 
             # `sloppy` mode means that the interleaving is not exact. This adds
             # even more randomness to the training pipeline.
-            #d = d.apply(
+            # d = d.apply(
             #    tf.contrib.data.parallel_interleave(
             #        tf.data.TFRecordDataset,
             #        sloppy=is_training,
             #        cycle_length=cycle_length))
-            #d = d.shuffle(buffer_size=100)
+            # d = d.shuffle(buffer_size=100)
         else:
             d = tf.data.TFRecordDataset(input_files)
-
 
         d = d.map(
             lambda record: _decode_record(record, name_to_features),
@@ -480,21 +495,21 @@ def input_fn_builder(input_files,
 
 def _decode_record(record, name_to_features):
     """Decodes a record to a TensorFlow example."""
-    example = tf.parse_single_example(record, name_to_features)
+    example = tf.compat.v1.parse_single_example(record, name_to_features)
 
     # tf.Example only supports tf.int64, but the TPU only supports tf.int32.
     # So cast all int64 to int32.
     for name in list(example.keys()):
         t = example[name]
         if t.dtype == tf.int64:
-            t = tf.to_int32(t)
+            t = tf.compat.v1.to_int32(t)
         example[name] = t
 
     return example
 
 
 def main(_):
-    tf.logging.set_verbosity(tf.logging.INFO)
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 
     FLAGS.checkpointDir = FLAGS.checkpointDir + FLAGS.signature
     print('checkpointDir:', FLAGS.checkpointDir)
@@ -505,34 +520,35 @@ def main(_):
 
     bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
 
-    tf.gfile.MakeDirs(FLAGS.checkpointDir)
+    tf.compat.v1.gfile.MakeDirs(FLAGS.checkpointDir)
 
     train_input_files = []
     for input_pattern in FLAGS.train_input_file.split(","):
-        train_input_files.extend(tf.gfile.Glob(input_pattern))
+        train_input_files.extend(tf.compat.v1.gfile.Glob(input_pattern))
 
     test_input_files = []
     if FLAGS.test_input_file is None:
         test_input_files = train_input_files
     else:
         for input_pattern in FLAGS.test_input_file.split(","):
-            test_input_files.extend(tf.gfile.Glob(input_pattern))
+            test_input_files.extend(tf.compat.v1.gfile.Glob(input_pattern))
 
-    tf.logging.info("*** train Input Files ***")
+    tf.compat.v1.logging.info("*** train Input Files ***")
     for input_file in train_input_files:
-        tf.logging.info("  %s" % input_file)
+        tf.compat.v1.logging.info("  %s" % input_file)
 
-    tf.logging.info("*** test Input Files ***")
+    tf.compat.v1.logging.info("*** test Input Files ***")
     for input_file in train_input_files:
-        tf.logging.info("  %s" % input_file)
+        tf.compat.v1.logging.info("  %s" % input_file)
 
     tpu_cluster_resolver = None
 
-    #is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
-    run_config = tf.estimator.RunConfig(
+    # is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
+    run_config = tf.compat.v1.estimator.RunConfig(
         model_dir=FLAGS.checkpointDir,
-        save_checkpoints_steps=FLAGS.save_checkpoints_steps)
-    
+        save_checkpoints_steps=FLAGS.save_checkpoints_steps,
+    )
+
     if FLAGS.vocab_filename is not None:
         with open(FLAGS.vocab_filename, 'rb') as input_file:
             vocab = pickle.load(input_file)
@@ -550,16 +566,13 @@ def main(_):
 
     # If TPU is not available, this will fall back to normal Estimator on CPU
     # or GPU.
-    estimator = tf.estimator.Estimator(
-        model_fn=model_fn,
-        config=run_config,
-        params={
-            "batch_size": FLAGS.batch_size
-        })
+    estimator = tf.compat.v1.estimator.Estimator(
+        model_fn=model_fn, config=run_config, params={"batch_size": FLAGS.batch_size}
+    )
 
     if FLAGS.do_train:
-        tf.logging.info("***** Running training *****")
-        tf.logging.info("  Batch size = %d", FLAGS.batch_size)
+        tf.compat.v1.logging.info("***** Running training *****")
+        tf.compat.v1.logging.info("  Batch size = %d", FLAGS.batch_size)
         train_input_fn = input_fn_builder(
             input_files=train_input_files,
             max_seq_length=FLAGS.max_seq_length,
@@ -569,8 +582,8 @@ def main(_):
             input_fn=train_input_fn, max_steps=FLAGS.num_train_steps)
 
     if FLAGS.do_eval:
-        tf.logging.info("***** Running evaluation *****")
-        tf.logging.info("  Batch size = %d", FLAGS.batch_size)
+        tf.compat.v1.logging.info("***** Running evaluation *****")
+        tf.compat.v1.logging.info("  Batch size = %d", FLAGS.batch_size)
 
         eval_input_fn = input_fn_builder(
             input_files=test_input_files,
@@ -578,7 +591,7 @@ def main(_):
             max_predictions_per_seq=FLAGS.max_predictions_per_seq,
             is_training=False)
 
-        #tf.logging.info('special eval ops:', special_eval_ops)
+        # tf.logging.info('special eval ops:', special_eval_ops)
         result = estimator.evaluate(
             input_fn=eval_input_fn,
             steps=None,
@@ -586,12 +599,12 @@ def main(_):
 
         output_eval_file = os.path.join(FLAGS.checkpointDir,
                                         "eval_results.txt")
-        with tf.gfile.GFile(output_eval_file, "w") as writer:
-            tf.logging.info("***** Eval results *****")
-            tf.logging.info(bert_config.to_json_string())
+        with tf.compat.v1.gfile.GFile(output_eval_file, "w") as writer:
+            tf.compat.v1.logging.info("***** Eval results *****")
+            tf.compat.v1.logging.info(bert_config.to_json_string())
             writer.write(bert_config.to_json_string()+'\n')
             for key in sorted(result.keys()):
-                tf.logging.info("  %s = %s", key, str(result[key]))
+                tf.compat.v1.logging.info("  %s = %s", key, str(result[key]))
                 writer.write("%s = %s\n" % (key, str(result[key])))
 
 
@@ -599,4 +612,4 @@ if __name__ == "__main__":
     flags.mark_flag_as_required("bert_config_file")
     flags.mark_flag_as_required("checkpointDir")
     flags.mark_flag_as_required("user_history_filename")
-    tf.app.run()
+    tf.compat.v1.app.run()
