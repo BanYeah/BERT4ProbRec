@@ -1,14 +1,14 @@
 CKPT_DIR="./ckpt"
-dataset_name="beauty"
+dataset_name=$1
 max_seq_length=50
-max_predictions_per_seq=30
-masked_lm_prob=0.6
+max_predictions_per_seq=15
+masked_lm_prob=0.4
 
 dim=64
 batch_size=256
 num_train_steps=400000
 
-prop_sliding_window=0.1
+prop_sliding_window=0.5
 mask_prob=1.0
 dupe_factor=10
 pool_size=10
@@ -17,6 +17,7 @@ signature="-mp${mask_prob}-sw${prop_sliding_window}-mlp${masked_lm_prob}-df${dup
 
 
 python -u gen_data.py \
+    --data_dir=./data/learn-hist/ \
     --dataset_name=${dataset_name} \
     --max_seq_length=${max_seq_length} \
     --max_predictions_per_seq=${max_predictions_per_seq} \
@@ -29,10 +30,10 @@ python -u gen_data.py \
 
 
 CUDA_VISIBLE_DEVICES=1 python -u run.py \
-    --train_input_file=./data/${dataset_name}${signature}.train.tfrecord \
-    --test_input_file=./data/${dataset_name}${signature}.test.tfrecord \
-    --vocab_filename=./data/${dataset_name}${signature}.vocab \
-    --user_history_filename=./data/${dataset_name}${signature}.his \
+    --train_input_file=./data/learn-hist/${dataset_name}${signature}.train.tfrecord \
+    --test_input_file=./data/learn-hist/${dataset_name}${signature}.test.tfrecord \
+    --vocab_filename=./data/learn-hist/${dataset_name}${signature}.vocab \
+    --user_history_filename=./data/learn-hist/${dataset_name}${signature}.his \
     --checkpointDir=${CKPT_DIR}/${dataset_name} \
     --signature=${signature}-${dim} \
     --do_train=True \

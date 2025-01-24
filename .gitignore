@@ -5,11 +5,11 @@
 
 ckpt/
 
-data/woong.csv
+data/learn-hist_resources/
+data/learn-hist/
 data/*.his
 data/*.tfrecord
 data/*.vocab
-
 
 # Initially taken from Github's Python gitignore file
 
