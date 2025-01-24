@@ -1,8 +1,8 @@
 CKPT_DIR="./ckpt"
-dataset_name="ml-1m"
-max_seq_length=200
-masked_lm_prob=0.2
-max_predictions_per_seq=40
+dataset_name=$1
+max_seq_length=50
+max_predictions_per_seq=15
+masked_lm_prob=0.4
 
 dim=64
 batch_size=256
@@ -17,6 +17,7 @@ signature="-mp${mask_prob}-sw${prop_sliding_window}-mlp${masked_lm_prob}-df${dup
 
 
 python -u gen_data.py \
+    --data_dir=./data/learn-hist/ \
     --dataset_name=${dataset_name} \
     --max_seq_length=${max_seq_length} \
     --max_predictions_per_seq=${max_predictions_per_seq} \
@@ -27,11 +28,12 @@ python -u gen_data.py \
     --signature=${signature} \
     --pool_size=${pool_size} \
 
-CUDA_VISIBLE_DEVICES=0 python -u run.py \
-    --train_input_file=./data/${dataset_name}${signature}.train.tfrecord \
-    --test_input_file=./data/${dataset_name}${signature}.test.tfrecord \
-    --vocab_filename=./data/${dataset_name}${signature}.vocab \
-    --user_history_filename=./data/${dataset_name}${signature}.his \
+
+CUDA_VISIBLE_DEVICES=1 python -u run.py \
+    --train_input_file=./data/learn-hist/${dataset_name}${signature}.train.tfrecord \
+    --test_input_file=./data/learn-hist/${dataset_name}${signature}.test.tfrecord \
+    --vocab_filename=./data/learn-hist/${dataset_name}${signature}.vocab \
+    --user_history_filename=./data/learn-hist/${dataset_name}${signature}.his \
     --checkpointDir=${CKPT_DIR}/${dataset_name} \
     --signature=${signature}-${dim} \
     --do_train=True \
@@ -43,4 +45,3 @@ CUDA_VISIBLE_DEVICES=0 python -u run.py \
     --num_train_steps=${num_train_steps} \
     --num_warmup_steps=100 \
     --learning_rate=1e-4
-

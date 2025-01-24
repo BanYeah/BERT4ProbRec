@@ -11,8 +11,9 @@ import copy
 import json
 import math
 import re
-import six
+
 import tensorflow as tf
+import six
 
 
 class BertConfig(object):
@@ -51,7 +52,7 @@ class BertConfig(object):
             (e.g., 512 or 1024 or 2048).
         type_vocab_size: The vocabulary size of the `token_type_ids` passed into
             `BertModel`.
-        initializer_range: The stdev of the truncated_normal_initializer for
+        initializer_range: The stdev of the keras.initializers.TruncatedNormal for
             initializing all weight matrices.
         """
         self.vocab_size = vocab_size
@@ -77,7 +78,7 @@ class BertConfig(object):
     @classmethod
     def from_json_file(cls, json_file):
         """Constructs a `BertConfig` from a json file of parameters."""
-        with tf.gfile.GFile(json_file, "r") as reader:
+        with tf.io.gfile.GFile(json_file, "r") as reader:
             text = reader.read()
         return cls.from_dict(json.loads(text))
 
@@ -108,7 +109,7 @@ class BertModel(object):
     model = modeling.BertModel(config=config, is_training=True,
         input_ids=input_ids, input_mask=input_mask, token_type_ids=token_type_ids)
 
-    label_embeddings = tf.get_variable(...)
+    label_embeddings = tf.Variable(...)
     logits = tf.matmul(pooled_output, label_embeddings)
     ...
     ```
@@ -157,8 +158,8 @@ class BertModel(object):
             token_type_ids = tf.zeros(
                 shape=[batch_size, seq_length], dtype=tf.int32)
 
-        with tf.variable_scope(scope, default_name="bert"):
-            with tf.variable_scope("embeddings"):
+        with tf.compat.v1.variable_scope(scope, default_name="bert"):
+            with tf.compat.v1.variable_scope("embeddings"):
                 # Perform embedding lookup on the word ids.
                 (self.embedding_output,
                  self.embedding_table) = embedding_lookup(
@@ -183,7 +184,7 @@ class BertModel(object):
                     max_position_embeddings=config.max_position_embeddings,
                     dropout_prob=config.hidden_dropout_prob)
 
-            with tf.variable_scope("encoder"):
+            with tf.compat.v1.variable_scope("encoder"):
                 # This converts a 2D mask of shape [batch_size, seq_length] to a 3D
                 # mask of shape [batch_size, seq_length, seq_length] which is used
                 # for the attention scores.
@@ -212,17 +213,16 @@ class BertModel(object):
             # [batch_size, hidden_size]. This is necessary for segment-level
             # (or segment-pair-level) classification tasks where we need a fixed
             # dimensional representation of the segment.
-            # with tf.variable_scope("pooler"):
+            # with tf.compat.v1.variable_scope("pooler"):
             #     # We "pool" the model by simply taking the hidden state corresponding
             #     # to the first token. We assume that this has been pre-trained
             #     first_token_tensor = tf.squeeze(
             #         self.sequence_output[:, 0:1, :], axis=1)
-            #     self.pooled_output = tf.layers.dense(
-            #         first_token_tensor,
-            #         config.hidden_size,
+            #     self.pooled_output = tf.keras.layers.Dense(
+            #         units=config.hidden_size,
             #         activation=tf.tanh,
             #         kernel_initializer=create_initializer(
-            #             config.initializer_range))
+            #             config.initializer_range))(first_token_tensor)
 
     def get_pooled_output(self):
         return self.pooled_output
@@ -266,7 +266,7 @@ def gelu(input_tensor):
     Returns:
         `input_tensor` with the GELU activation applied.
     """
-    cdf = 0.5 * (1.0 + tf.erf(input_tensor / tf.sqrt(2.0)))
+    cdf = 0.5 * (1.0 + tf.math.erf(input_tensor / tf.sqrt(2.0)))
     return input_tensor * cdf
 
 
@@ -348,17 +348,14 @@ def dropout(input_tensor, dropout_prob):
     if dropout_prob is None or dropout_prob == 0.0:
         return input_tensor
 
-    output = tf.nn.dropout(input_tensor, 1.0 - dropout_prob)
+    output = tf.nn.dropout(input_tensor, rate=1 - (1.0 - dropout_prob))
     return output
 
 
 def layer_norm(input_tensor, name=None):
     """Run layer normalization on the last dimension of the tensor."""
-    return tf.contrib.layers.layer_norm(
-        inputs=input_tensor,
-        begin_norm_axis=-1,
-        begin_params_axis=-1,
-        scope=name)
+    layer_norm = tf.keras.layers.LayerNormalization(axis=-1, name=name)
+    return layer_norm(input_tensor)
 
 
 def layer_norm_and_dropout(input_tensor, dropout_prob, name=None):
@@ -369,8 +366,8 @@ def layer_norm_and_dropout(input_tensor, dropout_prob, name=None):
 
 
 def create_initializer(initializer_range=0.02):
-    """Creates a `truncated_normal_initializer` with the given range."""
-    return tf.truncated_normal_initializer(stddev=initializer_range)
+    """Creates a `keras.initializers.TruncatedNormal` with the given range."""
+    return tf.keras.initializers.TruncatedNormal(stddev=initializer_range)
 
 
 def embedding_lookup(input_ids,
@@ -403,10 +400,13 @@ def embedding_lookup(input_ids,
     if input_ids.shape.ndims == 2:
         input_ids = tf.expand_dims(input_ids, axis=[-1])
 
-    embedding_table = tf.get_variable(
+    embedding_table = tf.Variable(
+        initial_value=create_initializer(initializer_range)(
+            shape=[vocab_size, embedding_size], dtype=tf.float32
+        ),
+        trainable=True,
         name=word_embedding_name,
-        shape=[vocab_size, embedding_size],
-        initializer=create_initializer(initializer_range))
+    )
 
     if use_one_hot_embeddings:
         flat_input_ids = tf.reshape(input_ids, [-1])
@@ -470,10 +470,13 @@ def embedding_postprocessor(input_tensor,
         if token_type_ids is None:
             raise ValueError("`token_type_ids` must be specified if"
                              "`use_token_type` is True.")
-        token_type_table = tf.get_variable(
+        token_type_table = tf.Variable(
+            initial_value=create_initializer(initializer_range)(
+                shape=[token_type_vocab_size, width], dtype=tf.float32
+            ),
+            trainable=True,
             name=token_type_embedding_name,
-            shape=[token_type_vocab_size, width],
-            initializer=create_initializer(initializer_range))
+        )
         # This vocab will be small so we always do one-hot here, since it is always
         # faster for a small vocabulary.
         flat_token_type_ids = tf.reshape(token_type_ids, [-1])
@@ -485,12 +488,15 @@ def embedding_postprocessor(input_tensor,
         output += token_type_embeddings
 
     if use_position_embeddings:
-        assert_op = tf.assert_less_equal(seq_length, max_position_embeddings)
+        assert_op = tf.compat.v1.debugging.assert_less_equal(seq_length, max_position_embeddings)
         with tf.control_dependencies([assert_op]):
-            full_position_embeddings = tf.get_variable(
+            full_position_embeddings = tf.Variable(
+                initial_value=create_initializer(initializer_range)(
+                    shape=[max_position_embeddings, width], dtype=tf.float32
+                ),
+                trainable=True,
                 name=position_embedding_name,
-                shape=[max_position_embeddings, width],
-                initializer=create_initializer(initializer_range))
+            )
             # Since the position embedding table is a learned variable, we create it
             # using a (long) sequence length `max_position_embeddings`. The actual
             # sequence length might be shorter than this, for faster training of
@@ -662,28 +668,28 @@ def attention_layer(from_tensor,
     to_tensor_2d = reshape_to_matrix(to_tensor)
 
     # `query_layer` = [B*F, N*H]
-    query_layer = tf.layers.dense(
-        from_tensor_2d,
-        num_attention_heads * size_per_head,
+    query_layer = tf.keras.layers.Dense(
+        units=num_attention_heads * size_per_head,
         activation=query_act,
         name="query",
-        kernel_initializer=create_initializer(initializer_range))
+        kernel_initializer=create_initializer(initializer_range),
+    )(from_tensor_2d)
 
     # `key_layer` = [B*T, N*H]
-    key_layer = tf.layers.dense(
-        to_tensor_2d,
-        num_attention_heads * size_per_head,
+    key_layer = tf.keras.layers.Dense(
+        units=num_attention_heads * size_per_head,
         activation=key_act,
         name="key",
-        kernel_initializer=create_initializer(initializer_range))
+        kernel_initializer=create_initializer(initializer_range),
+    )(to_tensor_2d)
 
     # `value_layer` = [B*T, N*H]
-    value_layer = tf.layers.dense(
-        to_tensor_2d,
-        num_attention_heads * size_per_head,
+    value_layer = tf.keras.layers.Dense(
+        units=num_attention_heads * size_per_head,
         activation=value_act,
         name="value",
-        kernel_initializer=create_initializer(initializer_range))
+        kernel_initializer=create_initializer(initializer_range),
+    )(to_tensor_2d)
 
     # `query_layer` = [B, N, F, H]
     query_layer = transpose_for_scores(query_layer, batch_size,
@@ -825,12 +831,12 @@ def transformer_model(input_tensor,
 
     all_layer_outputs = []
     for layer_idx in range(num_hidden_layers):
-        with tf.variable_scope("layer_%d" % layer_idx):
+        with tf.compat.v1.variable_scope("layer_%d" % layer_idx):
             layer_input = prev_output
 
-            with tf.variable_scope("attention"):
+            with tf.compat.v1.variable_scope("attention"):
                 attention_heads = []
-                with tf.variable_scope("self"):
+                with tf.compat.v1.variable_scope("self"):
                     attention_head = attention_layer(
                         from_tensor=layer_input,
                         to_tensor=layer_input,
@@ -856,31 +862,30 @@ def transformer_model(input_tensor,
 
                 # Run a linear projection of `hidden_size` then add a residual
                 # with `layer_input`.
-                with tf.variable_scope("output"):
-                    attention_output = tf.layers.dense(
-                        attention_output,
-                        hidden_size,
+                with tf.compat.v1.variable_scope("output"):
+                    attention_output = tf.keras.layers.Dense(
+                        units=hidden_size,
                         kernel_initializer=create_initializer(
-                            initializer_range))
+                            initializer_range))(attention_output)
                     attention_output = dropout(attention_output,
                                                hidden_dropout_prob)
                     attention_output = layer_norm(attention_output +
                                                   layer_input)
 
             # The activation is only applied to the "intermediate" hidden layer.
-            with tf.variable_scope("intermediate"):
-                intermediate_output = tf.layers.dense(
-                    attention_output,
-                    intermediate_size,
+            with tf.compat.v1.variable_scope("intermediate"):
+                intermediate_output = tf.keras.layers.Dense(
+                    units=intermediate_size,
                     activation=intermediate_act_fn,
-                    kernel_initializer=create_initializer(initializer_range))
+                    kernel_initializer=create_initializer(initializer_range),
+                )(attention_output)
 
             # Down-project back to `hidden_size` then add the residual.
-            with tf.variable_scope("output"):
-                layer_output = tf.layers.dense(
-                    intermediate_output,
-                    hidden_size,
-                    kernel_initializer=create_initializer(initializer_range))
+            with tf.compat.v1.variable_scope("output"):
+                layer_output = tf.keras.layers.Dense(
+                    units=hidden_size,
+                    kernel_initializer=create_initializer(initializer_range),
+                )(intermediate_output)
                 layer_output = dropout(layer_output, hidden_dropout_prob)
                 layer_output = layer_norm(layer_output + attention_output)
                 prev_output = layer_output
@@ -984,7 +989,7 @@ def assert_rank(tensor, expected_rank, name=None):
 
     actual_rank = tensor.shape.ndims
     if actual_rank not in expected_rank_dict:
-        scope_name = tf.get_variable_scope().name
+        scope_name = tf.compat.v1.get_variable_scope().name
         raise ValueError(
             "For the tensor `%s` in scope `%s`, the actual rank "
             "`%d` (shape = %s) is not equal to the expected rank `%s`" %

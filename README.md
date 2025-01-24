@@ -19,7 +19,7 @@ For simplicity, here we take ml-1m as an example:
 include two part command:
 generated masked training data
 ``` bash
-python -u gen_data_fin.py \
+python -u gen_data.py \
     --dataset_name=${dataset_name} \
     --max_seq_length=${max_seq_length} \
     --max_predictions_per_seq=${max_predictions_per_seq} \
