@@ -38,13 +38,48 @@ def lesson_based(df, only_correct = False):
         for id, qc_list in sequences.items(): # student_id, question_code
             if len(qc_list) < 5:
                 continue
-            
+
             users += 1
             actions += len(qc_list)
             for qc in qc_list:
                 file.write(f"{id} {qc}\n")
                 items.add(qc)
-    
+
+
+def unit_based(df, only_correct=False):
+    sequences = {}
+    for index, row in df.iterrows():
+        if pd.isna(row["question_grad_unit"]):
+            continue
+        elif only_correct and row["correct"] == 0:
+            continue
+
+        grad_unit = row["question_grad_unit"].split("_")
+        student_id_grad_unit = (
+            row["student_id"] * 1000
+            + int(grad_unit[0][3]) * 100
+            + int(grad_unit[1]) * 10
+            + int(grad_unit[2])
+        )
+
+        if student_id_grad_unit not in sequences:
+            sequences[student_id_grad_unit] = []
+        sequences[student_id_grad_unit].append(row["question_code"])
+
+    users = 0
+    items = set()
+    actions = 0
+    with open("./data/learn-hist/unit-based-OC.txt", "w") as file:
+        for id, qc_list in sequences.items():  # student_id, question_code
+            if len(qc_list) < 5:
+                continue
+
+            users += 1
+            actions += len(qc_list)
+            for qc in qc_list:
+                file.write(f"{id} {qc}\n")
+                items.add(qc)
+
     print("#users:", users)
     print("#items:", len(items))
     print("#actions:", actions)
@@ -52,8 +87,10 @@ def lesson_based(df, only_correct = False):
 
 
 if __name__ == "__main__":
-    lesson_based(df)
+    # lesson_based(df)
     # #users: 812,968
     # #items: 3,936
     # #actions: 15.3M
     # Avg.length: 18.8
+    
+    unit_based(df, True)

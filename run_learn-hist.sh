@@ -1,5 +1,5 @@
 CKPT_DIR="./ckpt"
-dataset_name=$2
+dataset_name=$1
 max_seq_length=50
 max_predictions_per_seq=15
 masked_lm_prob=0.4
@@ -16,7 +16,7 @@ pool_size=10
 signature="-mp${mask_prob}-sw${prop_sliding_window}-mlp${masked_lm_prob}-df${dupe_factor}-mpps${max_predictions_per_seq}-msl${max_seq_length}"
 
 
-if [[ "$1" != "-r" ]]; then
+if [[ "$2" != "-r" ]]; then
     python -u gen_data.py \
         --data_dir=./data/learn-hist/ \
         --dataset_name=${dataset_name} \
