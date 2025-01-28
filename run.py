@@ -161,7 +161,7 @@ class EvalHooks(tf.compat.v1.train.SessionRunHook):
 
     def end(self, session):
         print(
-            "ndcg@1:{}, hit@1:{}， ndcg@5:{}, hit@5:{}, ndcg@10:{}, hit@10:{}, ap:{}, valid_user:{}".
+            "ndcg@1:{}, hit@1:{}, ndcg@5:{}, hit@5:{}, ndcg@10:{}, hit@10:{}, ap:{}, valid_user:{}".
             format(self.ndcg_1 / self.valid_user, self.hit_1 / self.valid_user,
                    self.ndcg_5 / self.valid_user, self.hit_5 / self.valid_user,
                    self.ndcg_10 / self.valid_user,

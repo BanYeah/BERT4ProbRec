@@ -92,5 +92,9 @@ if __name__ == "__main__":
     # #items: 3,936
     # #actions: 15.3M
     # Avg.length: 18.8
-    
+
     unit_based(df, True)
+    # #users: 199,114
+    # #items: 3,923
+    # #actions: 9.2M
+    # Avg.length: 46.5
