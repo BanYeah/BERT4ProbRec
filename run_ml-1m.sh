@@ -16,16 +16,19 @@ pool_size=10
 signature="-mp${mask_prob}-sw${prop_sliding_window}-mlp${masked_lm_prob}-df${dupe_factor}-mpps${max_predictions_per_seq}-msl${max_seq_length}"
 
 
-python -u gen_data.py \
-    --dataset_name=${dataset_name} \
-    --max_seq_length=${max_seq_length} \
-    --max_predictions_per_seq=${max_predictions_per_seq} \
-    --mask_prob=${mask_prob} \
-    --dupe_factor=${dupe_factor} \
-    --masked_lm_prob=${masked_lm_prob} \
-    --prop_sliding_window=${prop_sliding_window} \
-    --signature=${signature} \
-    --pool_size=${pool_size} \
+if [[ "$1" != "-r" ]]; then
+    python -u gen_data.py \
+        --dataset_name=${dataset_name} \
+        --max_seq_length=${max_seq_length} \
+        --max_predictions_per_seq=${max_predictions_per_seq} \
+        --mask_prob=${mask_prob} \
+        --dupe_factor=${dupe_factor} \
+        --masked_lm_prob=${masked_lm_prob} \
+        --prop_sliding_window=${prop_sliding_window} \
+        --signature=${signature} \
+        --pool_size=${pool_size}
+fi
+
 
 CUDA_VISIBLE_DEVICES=0 python -u run.py \
     --train_input_file=./data/${dataset_name}${signature}.train.tfrecord \
@@ -42,5 +45,4 @@ CUDA_VISIBLE_DEVICES=0 python -u run.py \
     --max_predictions_per_seq=${max_predictions_per_seq} \
     --num_train_steps=${num_train_steps} \
     --num_warmup_steps=100 \
-    --learning_rate=1e-4
-
+    --learning_rate=1e-4 
