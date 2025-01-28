@@ -1,8 +1,8 @@
 CKPT_DIR="./ckpt"
 dataset_name="steam"
 max_seq_length=50
-max_predictions_per_seq=20
 masked_lm_prob=0.4
+max_predictions_per_seq=20
 
 dim=256
 batch_size=256

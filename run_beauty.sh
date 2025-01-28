@@ -1,8 +1,8 @@
 CKPT_DIR="./ckpt"
 dataset_name="beauty"
 max_seq_length=50
-max_predictions_per_seq=30
 masked_lm_prob=0.6
+max_predictions_per_seq=30
 
 dim=64
 batch_size=256
