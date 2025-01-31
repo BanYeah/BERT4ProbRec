@@ -557,6 +557,7 @@ def main():
     }
 
     # mix the order of items randomly to verify if the model relies on the embedding of the item
+    print("shuffling user_train_data ...")
     for k in user_train_data.keys():
         random.shuffle(user_train_data[k])
 

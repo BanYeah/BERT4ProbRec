@@ -16,7 +16,7 @@ pool_size=10
 signature="-mp${mask_prob}-sw${prop_sliding_window}-mlp${masked_lm_prob}-df${dupe_factor}-mpps${max_predictions_per_seq}-msl${max_seq_length}"
 
 
-if [[ "$2" != "-r" ]]; then
+if [[ "$2" != "-r" && "$2" != "--shuffle" ]]; then
     python -u gen_data.py \
         --data_dir=./data/learn-hist/ \
         --dataset_name=${dataset_name} \
@@ -28,7 +28,7 @@ if [[ "$2" != "-r" ]]; then
         --prop_sliding_window=${prop_sliding_window} \
         --signature=${signature} \
         --pool_size=${pool_size}
-else if [[ "$2" == "--shuffle" ]]; then
+elif [[ "$2" == "--shuffle" ]]; then
     python -u gen_random_sequence_data.py \
         --data_dir=./data/learn-hist/ \
         --dataset_name=${dataset_name} \
