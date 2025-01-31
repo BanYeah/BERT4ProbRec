@@ -555,6 +555,11 @@ def main():
         'user_' + str(k): ['item_' + str(item) for item in v]
         for k, v in user_train.items() if len(v) > 0
     }
+
+    # mix the order of items randomly to verify if the model relies on the embedding of the item
+    for k in user_train_data.keys():
+        random.shuffle(user_train_data[k])
+
     user_test_data = {
         'user_' + str(u):
             ['item_' + str(item) for item in (user_train[u] + user_test[u])]

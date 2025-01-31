@@ -28,6 +28,18 @@ if [[ "$2" != "-r" ]]; then
         --prop_sliding_window=${prop_sliding_window} \
         --signature=${signature} \
         --pool_size=${pool_size}
+else if [[ "$2" == "--shuffle" ]]; then
+    python -u gen_random_sequence_data.py \
+        --data_dir=./data/learn-hist/ \
+        --dataset_name=${dataset_name} \
+        --max_seq_length=${max_seq_length} \
+        --max_predictions_per_seq=${max_predictions_per_seq} \
+        --mask_prob=${mask_prob} \
+        --dupe_factor=${dupe_factor} \
+        --masked_lm_prob=${masked_lm_prob} \
+        --prop_sliding_window=${prop_sliding_window} \
+        --signature=${signature} \
+        --pool_size=${pool_size}
 fi
 
 
