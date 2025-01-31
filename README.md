@@ -1,13 +1,34 @@
-# BERT4Rec
+# BERT4ProbRec (based on BERT4Rec)
 
+## About
+This project builds a system that generates student question-solving sequences based on their solving history(```./gen_learn_sequence.py```) and recommends the next question for each student(```./run_learn-hist.sh```).    
+<br>
+**Student Question-Solving History Data**
+```shell
+# student_id           # Student ID
+# question_code        # Question ID
+# correct              # Correct/Incorrect
+# event_time           # Learning time (e.g., 2025-01-01 00:00:01)
+# ---
+# question_grad_unit   # Grade/semester/unit/lesson info (e.g., GR15_1_1_1)
+# question_difficulty  # Question difficulty level
+# question_correct     # Question accuracy rate
+```
+Due to the structure of BERT4Rec (which utilizes only item IDs), features such as event time, correctness, question difficulty, and accuracy rate could not be utilized.    
+<br>
+However, the data is highly structured—many students solve questions in sequential order as if following a workbook. Due to this, both unit-based and lesson-based sequences achieve abnormally high accuracy (~99%).    
+<br>
+<br>
 
 ## Usage
 
 **Requirements**
 
-* python 2.7+
-* Tensorflow 1.12 (GPU version)
-* CUDA compatible with TF 1.12
+* python 3.11.11
+* numpy 1.25.0
+* Tensorflow 2.15.0 (Code Migration from Tensorflow 1.12 (GPU version))
+* CUDA 12.4 (Google Colab Pro)
+<br>
 
 **Run**
 
@@ -15,6 +36,7 @@ For simplicity, here we take ml-1m as an example:
 
 ``` bash
 ./run_ml-1m.sh
+./run_m1-1m.sh -r # -r option: only train the model
 ```
 include two part command:
 generated masked training data
@@ -50,6 +72,7 @@ CUDA_VISIBLE_DEVICES=0 python -u run.py \
     --num_warmup_steps=100 \
     --learning_rate=1e-4
 ```
+<br>
 
 ### hyper-parameter settings
 json in `bert_train` like `bert_config_ml-1m_64.json`
@@ -69,7 +92,7 @@ json in `bert_train` like `bert_config_ml-1m_64.json`
   "vocab_size": 3420
 }
 ```
-
+<br>
 
 ## Reference
 
