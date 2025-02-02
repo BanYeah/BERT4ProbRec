@@ -121,7 +121,10 @@ def stu_based(df, only_correct=False, prced=False):
             most_common = max(starter_list, key=starter_list.count)
             starters[k] = most_common
 
-        print(starters)
+        starters = dict(sorted(starters.items()))
+
+        with open("./data/learn-hist_resources/lesson_starters.json", "w", encoding="utf-8") as file:
+            json.dump(starters, file, ensure_ascii=False, indent=4)
 
         delete = []
         for k in sequences.keys():
