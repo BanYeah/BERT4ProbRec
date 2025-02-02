@@ -1,5 +1,6 @@
 import pandas as pd
 import json
+import random
 
 df = pd.read_csv("./data/learn-hist/learn-hist.csv")
 # learn-hist.csv columns:
@@ -128,6 +129,10 @@ def stu_based(df, only_correct=False, prced=False):
 
         delete = []
         for k in sequences.keys():
+            if len(sequences[k]) >= 55:
+                rv = random.randint(55, len(sequences[k]))
+                sequences[k] = sequences[k][rv-55:rv]
+
             prev_question_code = sequences[k][-1]
             question_meta = data[str(prev_question_code)]
             prev_question_grad_unit = f"{question_meta['grad_cd']}_{question_meta['smst_cd']}_{question_meta['unit_order']}_{question_meta['lesn_order']}"
@@ -135,10 +140,10 @@ def stu_based(df, only_correct=False, prced=False):
             grad_cd, smst_cd, unit_order, lesn_order = prev_question_grad_unit.split("_")
             if (
                 f"{grad_cd}_{smst_cd}_{unit_order}_{int(lesn_order)+1}"
-                in sequences.keys()
+                in starters.keys()
             ):
                 sequences[k].append(starters[f"{grad_cd}_{smst_cd}_{unit_order}_{int(lesn_order)+1}"])
-            elif f"{grad_cd}_{smst_cd}_{int(unit_order)+1}_{1}" in sequences.keys():
+            elif f"{grad_cd}_{smst_cd}_{int(unit_order)+1}_{1}" in starters.keys():
                 sequences[k].append(starters[f"{grad_cd}_{smst_cd}_{int(unit_order)+1}_{1}"])
             elif smst_cd == 1:
                 sequences[k].append(starters[f"{grad_cd}_{2}_{1}_{1}"])
@@ -184,7 +189,7 @@ if __name__ == "__main__":
     # Avg.length: 46.5
 
     stu_based(df, False, True)
-    # #users: 14,693
-    # #items: 3,099
-    # #actions: 8.6M
-    # Avg.length: 583.9
+    # #users: 14,718
+    # #items: 2,063
+    # #actions: 0.7M
+    # Avg.length: 53.3
