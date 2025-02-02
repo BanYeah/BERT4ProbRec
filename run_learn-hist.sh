@@ -1,12 +1,12 @@
 CKPT_DIR="./ckpt"
 dataset_name=$1
-max_seq_length=200
-masked_lm_prob=0.2
-max_predictions_per_seq=40
+max_seq_length=50
+masked_lm_prob=0.4
+max_predictions_per_seq=20
 
 dim=64
 batch_size=256
-num_train_steps=250000
+num_train_steps=100000
 
 prop_sliding_window=0.5
 mask_prob=1.0
