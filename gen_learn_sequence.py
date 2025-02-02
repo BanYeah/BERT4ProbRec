@@ -189,7 +189,7 @@ if __name__ == "__main__":
     # Avg.length: 46.5
 
     stu_based(df, False, True)
-    # #users: 14,718
-    # #items: 2,063
-    # #actions: 0.7M
-    # Avg.length: 53.3
+    # #users: 28,246
+    # #items: 3,927
+    # #actions: 1.5M
+    # Avg.length: 52.5
