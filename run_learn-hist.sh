@@ -1,8 +1,8 @@
 CKPT_DIR="./ckpt"
 dataset_name=$1
-max_seq_length=50
-masked_lm_prob=0.4
-max_predictions_per_seq=15
+max_seq_length=100
+masked_lm_prob=0.2
+max_predictions_per_seq=40
 
 dim=64
 batch_size=256
