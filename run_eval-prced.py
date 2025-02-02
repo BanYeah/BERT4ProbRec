@@ -24,6 +24,7 @@ import sys
 import tensorflow as tf
 from absl import flags
 import numpy as np
+import json
 
 import modeling
 import pickle
@@ -125,6 +126,9 @@ class EvalHooks(tf.compat.v1.train.SessionRunHook):
 
     def begin(self):
         self.valid_user = 0.0
+        self.candidate_ids = []
+
+        self.eval_count = 0
 
         self.ndcg_1 = 0.0
         self.hit_1 = 0.0
@@ -154,6 +158,16 @@ class EvalHooks(tf.compat.v1.train.SessionRunHook):
             sum_value = np.sum([x for x in values])
             self.probability = [value / sum_value for value in values]
 
+            with open("./data/learn-hist_resources/lesson_starters.json","r",encoding="utf-8",) as file:
+                lesn_stars = json.load(file)
+
+            for x in lesn_stars.values():
+                token = "item_" + str(x)
+                if token in self.vocab.token_to_ids:
+                    self.candidate_ids.append(self.vocab.token_to_ids[token])
+
+            self.id2prob = {_id: _prob for _id, _prob in zip(self.ids, self.probability)}
+
     def end(self, session):
         print(
             "ndcg@1:{}, hit@1:{}， ndcg@5:{}, hit@5:{}, ndcg@10:{}, hit@10:{}, ap:{}, valid_user:{}".format(
@@ -179,6 +193,8 @@ class EvalHooks(tf.compat.v1.train.SessionRunHook):
         )
 
         for idx in range(len(input_ids)):
+            self.eval_count += 1
+
             rated = set(input_ids[idx])
             rated.add(0)
             rated.add(masked_lm_ids[idx][0])
@@ -191,15 +207,15 @@ class EvalHooks(tf.compat.v1.train.SessionRunHook):
             masked_lm_log_probs_elem = masked_lm_log_probs[idx, 0]
             size_of_prob = len(self.ids) + 1
             if FLAGS.use_pop_random and self.vocab is not None:
-                while len(item_idx) < 101:
-                    sampled_ids = np.random.choice(
-                        self.ids, 101, replace=False, p=self.probability
-                    )
-                    sampled_ids = [
-                        x for x in sampled_ids if x not in rated and x not in item_idx
-                    ]
-                    item_idx.extend(sampled_ids[:])
-                item_idx = item_idx[:101]
+                candidates = [x for x in self.candidate_ids if x not in rated]
+                if len(candidates) > 100:
+                    cand_probs = [self.id2prob[c] for c in candidates]
+                    sum_cand = sum(cand_probs)
+                    cand_probs = [p / sum_cand for p in cand_probs]
+                    sampled_ids = np.random.choice(candidates, size=100, replace=False, p=cand_probs)
+                else:
+                    sampled_ids = candidates
+                item_idx.extend(sampled_ids)
             else:
                 for _ in range(100):
                     t = np.random.randint(1, size_of_prob)
@@ -209,6 +225,20 @@ class EvalHooks(tf.compat.v1.train.SessionRunHook):
 
             predictions = -masked_lm_log_probs_elem[item_idx]
             rank = predictions.argsort().argsort()[0]
+
+            if self.eval_count <= 10:
+                print(f"== Sample {self.eval_count} ==")
+
+                ans_token = self.vocab.convert_ids_to_tokens([masked_lm_ids[idx][0]])[0]
+                print("Answer Token:", ans_token)
+                print("Rank of Answer Token:", rank)
+
+                # Top-5 (ID + Tokens)
+                top5_indices = predictions.argsort()[:5]  # 상위 5개 index
+                top5_item_ids = [item_idx[i] for i in top5_indices]
+                top5_tokens = self.vocab.convert_ids_to_tokens(top5_item_ids)
+                print("Top-5 tokens:", top5_tokens)
+                print()
 
             self.valid_user += 1
             if self.valid_user % 100 == 0:
