@@ -1,4 +1,5 @@
 import pandas as pd
+import json
 
 df = pd.read_csv("./data/learn-hist/learn-hist.csv")
 # learn-hist.csv columns:
@@ -86,6 +87,86 @@ def unit_based(df, only_correct=False):
     print("Avg. length:", actions/users)
 
 
+def stu_based(df, only_correct=False, prced=False):
+    # Read question-meta file
+    with open("./data/learn-hist_resources/question_meta.json", "r", encoding="utf-8") as file:
+        data = json.load(file)
+
+    sequences = {}
+    starters = {}
+    for index, row in df.iterrows():
+        if pd.isna(row["question_grad_unit"]):
+            continue
+        elif only_correct and row["correct"] == 0:
+            continue
+
+        if row["student_id"] not in sequences:
+            sequences[row["student_id"]] = []
+
+        if prced and len(sequences[row["student_id"]]) > 0:
+            prev_question_code = sequences[row["student_id"]][-1]
+            question_meta = data[str(prev_question_code)]
+            prev_question_grad_unit = f"{question_meta['grad_cd']}_{question_meta['smst_cd']}_{question_meta['unit_order']}_{question_meta['lesn_order']}"
+
+            if row["question_grad_unit"] != prev_question_grad_unit:
+                if row["question_grad_unit"] not in starters:
+                    starters[row["question_grad_unit"]] = []
+                starters[row["question_grad_unit"]].append(row["question_code"])
+
+        sequences[row["student_id"]].append(row["question_code"])
+
+    if prced:
+        for k in starters.keys():
+            starter_list = starters[k]
+            most_common = max(starter_list, key=starter_list.count)
+            starters[k] = most_common
+
+        print(starters)
+
+        delete = []
+        for k in sequences.keys():
+            prev_question_code = sequences[k][-1]
+            question_meta = data[str(prev_question_code)]
+            prev_question_grad_unit = f"{question_meta['grad_cd']}_{question_meta['smst_cd']}_{question_meta['unit_order']}_{question_meta['lesn_order']}"
+
+            grad_cd, smst_cd, unit_order, lesn_order = prev_question_grad_unit.split("_")
+            if (
+                f"{grad_cd}_{smst_cd}_{unit_order}_{int(lesn_order)+1}"
+                in sequences.keys()
+            ):
+                sequences[k].append(starters[f"{grad_cd}_{smst_cd}_{unit_order}_{int(lesn_order)+1}"])
+            elif f"{grad_cd}_{smst_cd}_{int(unit_order)+1}_{1}" in sequences.keys():
+                sequences[k].append(starters[f"{grad_cd}_{smst_cd}_{int(unit_order)+1}_{1}"])
+            elif smst_cd == 1:
+                sequences[k].append(starters[f"{grad_cd}_{2}_{1}_{1}"])
+            elif grad_cd == "GR15":
+                sequences[k].append(starters[f"GR16_{1}_{1}_{1}"])
+            else:
+                delete.append(k)
+
+        for k in delete:
+            del sequences[k]
+
+    users = 0
+    items = set()
+    actions = 0
+    with open("./data/learn-hist/stu-based-prced.txt", "w") as file:
+        for id, qc_list in sequences.items():  # student_id, question_code
+            if len(qc_list) < 5:
+                continue
+
+            users += 1
+            actions += len(qc_list)
+            for qc in qc_list:
+                file.write(f"{id} {qc}\n")
+                items.add(qc)
+
+    print("#users:", users)
+    print("#items:", len(items))
+    print("#actions:", actions)
+    print("Avg. length:", actions / users)
+
+
 if __name__ == "__main__":
     # lesson_based(df)
     # #users: 812,968
@@ -93,8 +174,14 @@ if __name__ == "__main__":
     # #actions: 15.3M
     # Avg.length: 18.8
 
-    unit_based(df, True)
+    # unit_based(df, True)
     # #users: 199,114
     # #items: 3,923
     # #actions: 9.2M
     # Avg.length: 46.5
+
+    stu_based(df, False, True)
+    # #users: 14,693
+    # #items: 3,099
+    # #actions: 8.6M
+    # Avg.length: 583.9
